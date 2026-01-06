@@ -1,0 +1,237 @@
+openapi: 3.0.3
+info:
+  title: Order Processing API
+  version: 1.0.0
+  description: Public API contract for the Order Processing System.
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+
+security:
+  - BearerAuth: [ ]
+
+paths:
+  /orders:
+    post:
+      summary: Create a new order
+      operationId: createOrder
+      tags: [ Orders ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    get:
+      summary: List orders
+      operationId: listOrders
+      tags: [ Orders ]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: A paginated list of orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedOrdersResponse'
+
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get order details
+      operationId: getOrderById
+      tags: [ Orders ]
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Cancel an order
+      operationId: cancelOrder
+      tags: [ Orders ]
+      responses:
+        '204':
+          description: Order successfully cancelled
+        '409':
+          description: Conflict - Order cannot be cancelled
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: The requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Order:
+      type: object
+      required: [ orderId, status, customer, items, totalAmount, createdAt ]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totalAmount:
+          $ref: '#/components/schemas/Money'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateOrderRequest:
+      type: object
+      required: [ customer, items, currency ]
+      properties:
+        customer:
+          $ref: '#/components/schemas/CustomerRef'
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateOrderItem'
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: USD
+
+    CreateOrderItem:
+      type: object
+      required: [ productId, quantity ]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+
+    OrderItem:
+      type: object
+      required: [ productId, quantity, unitPrice, lineTotal ]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          $ref: '#/components/schemas/Money'
+        lineTotal:
+          $ref: '#/components/schemas/Money'
+
+    Customer:
+      type: object
+      required: [ customerId, email ]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+
+    CustomerRef:
+      type: object
+      required: [ customerId ]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+
+    Money:
+      type: object
+      required: [ amount, currency ]
+      properties:
+        amount:
+          type: string
+          pattern: '^-?\d+(\.\d{1,4})?$'
+          example: "99.99"
+          description: Decimal amount as string. Max 4 decimal places.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: USD
+
+    OrderStatus:
+      type: string
+      enum: [ CREATED, CONFIRMED, PAID, SHIPPED, CANCELLED ]
+
+    PagedOrdersResponse:
+      type: object
+      required: [ items, total ]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        total:
+          type: integer
+          minimum: 0
+
+    Error:
+      type: object
+      required: [ code, message ]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
