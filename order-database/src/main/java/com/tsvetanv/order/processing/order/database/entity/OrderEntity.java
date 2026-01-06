@@ -39,6 +39,7 @@ public class OrderEntity {
     cascade = CascadeType.ALL,
     orphanRemoval = true
   )
+  @Builder.Default // Required so the builder uses the initialized list
   private List<OrderItemEntity> items = new ArrayList<>();
 
   @Column(name = "created_at", nullable = false)
