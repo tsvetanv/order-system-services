@@ -73,27 +73,6 @@ public class OrderServiceImpl implements OrderService {
     return order.getId();
   }
 
-  /**
-   * Cancels an existing order.
-   *
-   * <p><strong>Business rules:</strong></p>
-   * <ul>
-   *   <li>An order can be cancelled only if its status is {@link OrderStatus#CREATED} or {@link OrderStatus#CONFIRMED}.</li>
-   *   <li>An order cannot be cancelled if its status is {@link OrderStatus#PAID} or {@link OrderStatus#SHIPPED}.</li>
-   *   <li>Calling cancel on an already {@link OrderStatus#CANCELLED} order is idempotent and has no effect.</li>
-   * </ul>
-   *
-   * <p><strong>Behavior:</strong></p>
-   * <ul>
-   *   <li>If the order does not exist, {@link OrderNotFoundException} is thrown.</li>
-   *   <li>If cancellation is not allowed due to the current order status,
-   *       {@link OrderCancellationNotAllowedException}
-   *       is thrown.</li>
-   *   <li>On successful cancellation, the order status is set to {@link OrderStatus#CANCELLED}.</li>
-   * </ul>
-   *
-   * @param orderId the identifier of the order to cancel
-   */
   @Override
   @Transactional
   public void cancelOrder(UUID orderId) {
