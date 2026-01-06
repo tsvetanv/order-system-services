@@ -1,7 +1,6 @@
 package com.tsvetanv.order.processing.order.service.mapping;
 
 import com.tsvetanv.order.processing.order.api.generated.model.Order;
-import com.tsvetanv.order.processing.order.api.generated.model.OrderStatus;
 import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -29,7 +28,4 @@ public abstract class OrderMapper {
   @Mapping(target = "updatedAt", source = "updatedAt", qualifiedByName = "toOffset")
   public abstract Order toApi(OrderEntity entity);
 
-  protected OrderStatus mapStatus(String status) {
-    return OrderStatus.valueOf(status);
-  }
 }

@@ -47,7 +47,7 @@ public class OrderServiceImpl implements OrderService {
     OrderEntity order = OrderEntity.builder()
       .id(UUID.randomUUID())
       .customerId(dto.getCustomerId())
-      .status("CREATED")
+      .status(OrderStatus.CREATED)
       .createdAt(Instant.now())
       .build();
 
@@ -100,7 +100,7 @@ public class OrderServiceImpl implements OrderService {
     OrderEntity order = orderRepository.findById(orderId)
       .orElseThrow(() -> new OrderNotFoundException(orderId));
 
-    OrderStatus currentStatus = OrderStatus.valueOf(order.getStatus());
+    OrderStatus currentStatus = order.getStatus();
     if (currentStatus == OrderStatus.CANCELLED) {
       log.info("Order already cancelled | orderId={}", orderId);
       return; // idempotent
@@ -108,7 +108,7 @@ public class OrderServiceImpl implements OrderService {
     if (!OrderStatusTransitionPolicy.canCancel(currentStatus)) {
       throw new OrderCancellationNotAllowedException(orderId, currentStatus);
     }
-    order.setStatus(OrderStatus.CANCELLED.name());
+    order.setStatus(OrderStatus.CANCELLED);
     order.setUpdatedAt(Instant.now());
     orderRepository.save(order);
     log.info("Order cancelled | orderId={}", orderId);

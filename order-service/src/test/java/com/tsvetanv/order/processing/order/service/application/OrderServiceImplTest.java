@@ -72,7 +72,7 @@ class OrderServiceImplTest {
     UUID orderId = UUID.randomUUID();
     OrderEntity entity = OrderEntity.builder()
       .id(orderId)
-      .status(OrderStatus.CREATED.name())
+      .status(OrderStatus.CREATED)
       .createdAt(Instant.now())
       .build();
 
@@ -106,7 +106,7 @@ class OrderServiceImplTest {
     UUID orderId = UUID.randomUUID();
     OrderEntity entity = OrderEntity.builder()
       .id(orderId)
-      .status(OrderStatus.CREATED.name())
+      .status(OrderStatus.CREATED)
       .createdAt(Instant.now())
       .build();
 
@@ -115,7 +115,7 @@ class OrderServiceImplTest {
 
     orderService.cancelOrder(orderId);
 
-    assertThat(entity.getStatus()).isEqualTo(OrderStatus.CANCELLED.name());
+    assertThat(entity.getStatus()).isEqualTo(OrderStatus.CANCELLED);
     verify(orderRepository).save(entity);
   }
 
@@ -125,7 +125,7 @@ class OrderServiceImplTest {
     UUID orderId = UUID.randomUUID();
     OrderEntity entity = OrderEntity.builder()
       .id(orderId)
-      .status(OrderStatus.CANCELLED.name())
+      .status(OrderStatus.CANCELLED)
       .createdAt(Instant.now())
       .build();
 
@@ -143,7 +143,7 @@ class OrderServiceImplTest {
     UUID orderId = UUID.randomUUID();
     OrderEntity entity = OrderEntity.builder()
       .id(orderId)
-      .status(OrderStatus.SHIPPED.name())
+      .status(OrderStatus.SHIPPED)
       .createdAt(Instant.now())
       .build();
 
@@ -163,7 +163,7 @@ class OrderServiceImplTest {
     // Arrange
     OrderEntity entity = OrderEntity.builder()
       .id(UUID.randomUUID())
-      .status(OrderStatus.CREATED.name())
+      .status(OrderStatus.CREATED)
       .createdAt(Instant.now())
       .build();
 
