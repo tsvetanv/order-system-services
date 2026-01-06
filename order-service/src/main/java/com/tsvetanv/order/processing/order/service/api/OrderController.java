@@ -30,7 +30,9 @@ public class OrderController implements OrdersApi {
 
   @Override
   public ResponseEntity<Void> cancelOrder(UUID orderId) {
-    return null; // TODO fix later
+    log.info("HTTP DELETE /orders/{}", orderId);
+    orderService.cancelOrder(orderId);
+    return ResponseEntity.noContent().build();
   }
 
   @Override

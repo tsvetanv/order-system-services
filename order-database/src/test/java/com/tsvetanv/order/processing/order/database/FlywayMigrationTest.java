@@ -40,5 +40,40 @@ class FlywayMigrationTest extends AbstractDatabaseTest {
 
     assertThat(count).isGreaterThan(0);
   }
+
+  @Test
+  void ordersTableHasStatusColumn() {
+    Integer count = jdbcTemplate.queryForObject(
+      """
+        SELECT COUNT(*)
+        FROM information_schema.columns
+        WHERE table_name = 'orders'
+          AND column_name = 'status'
+        """,
+      Integer.class
+    );
+
+    assertThat(count).isEqualTo(1);
+  }
+
+  @Test
+  void ordersTableAllowsUpdate() {
+    jdbcTemplate.update(
+      """
+        INSERT INTO orders (id, customer_id, status, created_at, updated_at)
+        VALUES (gen_random_uuid(), gen_random_uuid(), 'CREATED', now(), now())
+        """
+    );
+
+    Integer updated = jdbcTemplate.update(
+      """
+        UPDATE orders
+        SET status = 'CANCELLED'
+        """
+    );
+
+    assertThat(updated).isGreaterThan(0);
+  }
+
 }
 

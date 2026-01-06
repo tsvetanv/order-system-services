@@ -4,6 +4,7 @@ import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.entity.OrderItemEntity;
 import com.tsvetanv.order.processing.order.database.repository.OrderRepository;
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDto;
+import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -62,5 +63,29 @@ public class OrderService {
 
     log.info("Order created with id={}", order.getId());
     return order.getId();
+  }
+
+  /**
+   * Cancels an order according to business rules.
+   */
+  @Transactional
+  public void cancelOrder(UUID orderId) {
+    log.info("Cancelling order | orderId={}", orderId);
+
+    OrderEntity order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+    OrderStatus currentStatus = OrderStatus.valueOf(order.getStatus());
+    if (currentStatus == OrderStatus.CANCELLED) {
+      log.info("Order already cancelled | orderId={}", orderId);
+      return; // idempotent
+    }
+    if (!OrderStatusTransitionPolicy.canCancel(currentStatus)) {
+      throw new OrderCancellationNotAllowedException(orderId, currentStatus);
+    }
+    order.setStatus(OrderStatus.CANCELLED.name());
+    order.setUpdatedAt(Instant.now());
+    orderRepository.save(order);
+    log.info("Order cancelled | orderId={}", orderId);
   }
 }
