@@ -20,12 +20,14 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 class OrderServiceImplTest {
 
@@ -38,6 +40,23 @@ class OrderServiceImplTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private OrderEntity order(
+    OrderStatus status,
+    UUID customerId,
+    Instant createdAt
+  ) {
+    return OrderEntity.builder()
+      .id(UUID.randomUUID())
+      .status(status)
+      .customerId(customerId)
+      .createdAt(createdAt)
+      .build();
   }
 
   // ---------------------------------------------------------------------------
@@ -160,21 +179,119 @@ class OrderServiceImplTest {
 
   @Test
   void listOrders_returnsPagedResult() {
-    // Arrange
-    OrderEntity entity = OrderEntity.builder()
-      .id(UUID.randomUUID())
-      .status(OrderStatus.CREATED)
-      .createdAt(Instant.now())
-      .build();
 
-    Page<OrderEntity> page = new PageImpl<>(List.of(entity));
-    when(orderRepository.findAll(any(Pageable.class)))
-      .thenReturn(page);
-    // Act
-    Page<OrderEntity> result = orderService.listOrders(10, 0);
-    // Assert
+    OrderEntity entity = order(
+      OrderStatus.CREATED,
+      UUID.randomUUID(),
+      Instant.now()
+    );
+
+    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
+      .thenReturn(new PageImpl<>(List.of(entity)));
+
+    Page<OrderEntity> result = orderService.listOrders(
+      10, 0, null, null, null
+    );
+
     assertThat(result.getContent()).hasSize(1);
-    verify(orderRepository).findAll(any(Pageable.class));
+    assertThat(result.getContent().get(0)).isSameAs(entity);
+  }
+
+  @Test
+  void listOrders_filtersByStatus() {
+
+    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
+      .thenReturn(new PageImpl<>(List.of(
+        order(OrderStatus.CREATED, UUID.randomUUID(), Instant.now())
+      )));
+
+    Page<OrderEntity> result = orderService.listOrders(
+      10, 0, OrderStatus.CREATED, null, null
+    );
+
+    assertThat(result.getContent())
+      .allMatch(o -> o.getStatus() == OrderStatus.CREATED);
+  }
+
+  @Test
+  void listOrders_filtersByCustomerId() {
+
+    UUID customerId = UUID.randomUUID();
+
+    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
+      .thenReturn(new PageImpl<>(List.of(
+        order(OrderStatus.CREATED, customerId, Instant.now())
+      )));
+
+    Page<OrderEntity> result = orderService.listOrders(
+      10, 0, null, customerId, null
+    );
+
+    assertThat(result.getContent())
+      .allMatch(o -> o.getCustomerId().equals(customerId));
+  }
+
+  @Test
+  void listOrders_filtersByStatusAndCustomerId() {
+
+    UUID customerId = UUID.randomUUID();
+
+    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
+      .thenReturn(new PageImpl<>(List.of(
+        order(OrderStatus.PAID, customerId, Instant.now())
+      )));
+
+    Page<OrderEntity> result = orderService.listOrders(
+      10, 0, OrderStatus.PAID, customerId, null
+    );
+
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(result.getContent().get(0).getStatus()).isEqualTo(OrderStatus.PAID);
+    assertThat(result.getContent().get(0).getCustomerId()).isEqualTo(customerId);
+  }
+
+  @Test
+  void listOrders_appliesAscendingSort() {
+
+    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
+      .thenReturn(new PageImpl<>(List.of()));
+
+    orderService.listOrders(10, 0, null, null, "createdAt,asc");
+
+    ArgumentCaptor<Pageable> pageableCaptor =
+      ArgumentCaptor.forClass(Pageable.class);
+
+    verify(orderRepository)
+      .findAll(any(Specification.class), pageableCaptor.capture());
+
+    assertThat(
+      pageableCaptor.getValue()
+        .getSort()
+        .getOrderFor("createdAt")
+        .getDirection()
+    ).isEqualTo(org.springframework.data.domain.Sort.Direction.ASC);
+  }
+
+  @Test
+  void listOrders_invalidSortFallsBackToDefault() {
+
+    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
+      .thenReturn(new PageImpl<>(List.of()));
+
+    orderService.listOrders(10, 0, null, null, "invalid");
+
+    ArgumentCaptor<Pageable> pageableCaptor =
+      ArgumentCaptor.forClass(Pageable.class);
+
+    verify(orderRepository)
+      .findAll(any(Specification.class), pageableCaptor.capture());
+
+    assertThat(
+      pageableCaptor.getValue()
+        .getSort()
+        .getOrderFor("createdAt")
+        .getDirection()
+    ).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
   }
 
 }

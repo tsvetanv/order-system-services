@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,11 +118,48 @@ public class OrderServiceImpl implements OrderService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<OrderEntity> listOrders(int limit, int offset) {
-    log.debug("Listing orders | limit={} | offset={}", limit, offset);
-    int page = offset / limit;
-    Pageable pageable = PageRequest.of(page, limit);
-    return orderRepository.findAll(pageable);
+  public Page<OrderEntity> listOrders(
+    int limit,
+    int offset,
+    OrderStatus status,
+    UUID customerId,
+    String sort
+  ) {
+    log.debug("Listing orders | limit={} | offset={} | status={} | customerId={} | sort={}",
+      limit, offset, status, customerId, sort);
+
+    // 1. Safe Pagination Calculation
+    int pageNumber = offset / limit;
+
+    // 2. Robust Sorting (Handles malformed strings gracefully)
+    Sort sortSpec = parseSort(sort);
+
+    Pageable pageable = PageRequest.of(pageNumber, limit, sortSpec);
+
+    // 3. Dynamic Filtering using Specifications
+    Specification<OrderEntity> spec = Specification.where(null);
+
+    if (status != null) {
+      spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+    }
+    if (customerId != null) {
+      spec = spec.and((root, query, cb) -> cb.equal(root.get("customerId"), customerId));
+    }
+
+    return orderRepository.findAll(spec, pageable);
   }
+
+  private Sort parseSort(String sort) {
+    if (sort == null || !sort.contains(",")) {
+      return Sort.by(Sort.Direction.DESC, "createdAt"); // Default safe sort
+    }
+    String[] parts = sort.split(",");
+    try {
+      return Sort.by(Sort.Direction.fromString(parts[1]), parts[0]);
+    } catch (Exception e) {
+      return Sort.by(Sort.Direction.DESC, "createdAt");
+    }
+  }
+
 
 }

@@ -5,6 +5,7 @@ import com.tsvetanv.order.processing.order.api.generated.model.CreateOrderReques
 import com.tsvetanv.order.processing.order.api.generated.model.Money;
 import com.tsvetanv.order.processing.order.api.generated.model.Order;
 import com.tsvetanv.order.processing.order.api.generated.model.PagedOrdersResponse;
+import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import com.tsvetanv.order.processing.order.service.application.OrderService;
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDto;
 import com.tsvetanv.order.processing.order.service.mapping.CreateOrderMapper;
@@ -69,20 +70,36 @@ public class OrderController implements OrdersApi {
   }
 
   @Override
-  public ResponseEntity<PagedOrdersResponse> listOrders(Integer limit, Integer offset) {
-    int resolvedLimit = (limit != null) ? limit : 10;
-    int resolvedOffset = (offset != null) ? offset : 0;
-    log.info(
-      "HTTP GET /orders | limit={} | offset={}", resolvedLimit, resolvedOffset);
+  public ResponseEntity<PagedOrdersResponse> listOrders(
+    Integer limit,
+    Integer offset,
+    com.tsvetanv.order.processing.order.api.generated.model.OrderStatus status,
+    UUID customerId,
+    String sort
+  ) {
 
-    var page = orderService.listOrders(resolvedLimit, resolvedOffset);
-    PagedOrdersResponse response = new PagedOrdersResponse()
-      .items(
-        page.getContent().stream()
-          .map(orderMapper::toApi)
-          .toList()
-      )
-      .total((int) page.getTotalElements());
+    log.info(
+      "HTTP GET /orders | limit={} | offset={} | status={} | customerId={} | sort={}",
+      limit, offset, status, customerId, sort
+    );
+
+    var page = orderService.listOrders(
+      limit,
+      offset,
+      status != null
+        ? OrderStatus.valueOf(status.name())
+        : null,
+      customerId,
+      sort
+    );
+
+    var response = new PagedOrdersResponse()
+      .items(page.getContent().stream()
+        .map(orderMapper::toApi)
+        .toList())
+      .totalElements((int) page.getTotalElements())
+      .limit(limit)
+      .offset(offset);
 
     return ResponseEntity.ok(response);
   }
