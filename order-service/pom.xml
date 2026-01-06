@@ -15,29 +15,40 @@
 
   <artifactId>order-service</artifactId>
   <name>Order Service</name>
-  <description>Order Processing System - Domain and business logic</description>
+  <description>Order Processing System – Runtime and business logic</description>
 
+  <!-- ========================================================= -->
+  <!-- Dependencies                                             -->
+  <!-- ========================================================= -->
   <dependencies>
 
-    <!-- Spring core (no web) -->
+    <!-- Spring Boot runtime (REST, validation, MVC) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter</artifactId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- API contract module (OpenAPI source of truth) -->
+    <dependency>
+      <groupId>com.tsvetanv.order.processing</groupId>
+      <artifactId>order-api</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <!-- Database module -->
     <dependency>
       <groupId>com.tsvetanv.order.processing</groupId>
       <artifactId>order-database</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
+    <!-- Swagger / OpenAPI 3 annotations -->
     <dependency>
-      <groupId>com.tsvetanv.order.processing</groupId>
-      <artifactId>order-database</artifactId>
-      <version>${project.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations</artifactId>
+      <version>2.2.20</version>
     </dependency>
+
 
     <!-- Lombok -->
     <dependency>
@@ -52,14 +63,17 @@
       <artifactId>mapstruct</artifactId>
     </dependency>
 
-    <!-- Tests -->
+    <!-- ===================== -->
+    <!-- Test Dependencies     -->
+    <!-- ===================== -->
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
 
-    <!-- Import the shared test infrastructure (the container config) -->
+    <!-- Shared DB test infrastructure -->
     <dependency>
       <groupId>com.tsvetanv.order.processing</groupId>
       <artifactId>order-database</artifactId>
@@ -68,19 +82,115 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Add this so OrderServiceTests can understand the shared Postgres config -->
+    <!-- Testcontainers PostgreSQL -->
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
       <scope>test</scope>
     </dependency>
 
-    <!-- Required for @ServiceConnection support -->
+    <!-- Spring Boot Testcontainers integration -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-testcontainers</artifactId>
       <scope>test</scope>
     </dependency>
+
   </dependencies>
+
+  <!-- ========================================================= -->
+  <!-- Build                                                     -->
+  <!-- ========================================================= -->
+  <build>
+    <plugins>
+
+      <!-- ===================================================== -->
+      <!-- OpenAPI Generator (contract → code)                  -->
+      <!-- ===================================================== -->
+      <plugin>
+        <groupId>org.openapitools</groupId>
+        <artifactId>openapi-generator-maven-plugin</artifactId>
+        <version>7.10.0</version>
+
+        <executions>
+          <execution>
+            <id>generate-order-api</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+
+            <configuration>
+
+              <!-- OpenAPI spec from order-api module -->
+              <inputSpec>
+                ${project.basedir}/../order-api/src/main/resources/openapi/order-api.yaml
+              </inputSpec>
+
+              <!-- Spring generator -->
+              <generatorName>spring</generatorName>
+
+              <!-- Output directory -->
+              <output>
+                ${project.build.directory}/generated-sources/openapi
+              </output>
+
+              <!-- Generated packages -->
+              <apiPackage>
+                com.tsvetanv.order.processing.order.api.generated
+              </apiPackage>
+              <modelPackage>
+                com.tsvetanv.order.processing.order.api.generated.model
+              </modelPackage>
+
+              <!-- Generation strategy -->
+              <configOptions>
+                <interfaceOnly>true</interfaceOnly>
+                <useSpringBoot3>true</useSpringBoot3>
+                <openApiNullable>false</openApiNullable>
+                <skipDefaultInterface>true</skipDefaultInterface>
+                <useTags>true</useTags>
+              </configOptions>
+
+              <!-- Disable unused artifacts -->
+              <generateApiTests>false</generateApiTests>
+              <generateModelTests>false</generateModelTests>
+              <generateApiDocumentation>false</generateApiDocumentation>
+              <generateModelDocumentation>false</generateModelDocumentation>
+
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- ===================================================== -->
+      <!-- Make generated sources visible to compiler            -->
+      <!-- ===================================================== -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.5.0</version>
+
+        <executions>
+          <execution>
+            <id>add-openapi-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+
+            <configuration>
+              <sources>
+                <source>
+                  ${project.build.directory}/generated-sources/openapi/src/main/java
+                </source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+  </build>
 
 </project>
