@@ -14,6 +14,7 @@ import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDt
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderItemDto;
 import com.tsvetanv.order.processing.order.service.application.money.Money;
 import com.tsvetanv.order.processing.order.service.application.pricing.PricingService;
+import com.tsvetanv.order.processing.order.service.application.pricing.ProductPricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
 import java.math.BigDecimal;
@@ -39,6 +40,9 @@ class OrderServiceImplTest {
 
   @Mock
   private PricingService pricingService;
+
+  @Mock
+  private ProductPricingService productPricingService;
 
   @InjectMocks
   private OrderServiceImpl orderService;
@@ -78,6 +82,9 @@ class OrderServiceImplTest {
       "EUR"
     );
 
+    when(productPricingService.getUnitPrice(any(), any()))
+      .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
+    
     when(orderRepository.save(any(OrderEntity.class)))
       .thenAnswer(invocation -> invocation.getArgument(0));
 
