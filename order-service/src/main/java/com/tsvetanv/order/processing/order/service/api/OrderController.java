@@ -70,6 +70,21 @@ public class OrderController implements OrdersApi {
 
   @Override
   public ResponseEntity<PagedOrdersResponse> listOrders(Integer limit, Integer offset) {
-    return null;
+    int resolvedLimit = (limit != null) ? limit : 10;
+    int resolvedOffset = (offset != null) ? offset : 0;
+    log.info(
+      "HTTP GET /orders | limit={} | offset={}", resolvedLimit, resolvedOffset);
+
+    var page = orderService.listOrders(resolvedLimit, resolvedOffset);
+    PagedOrdersResponse response = new PagedOrdersResponse()
+      .items(
+        page.getContent().stream()
+          .map(orderMapper::toApi)
+          .toList()
+      )
+      .total((int) page.getTotalElements());
+
+    return ResponseEntity.ok(response);
   }
+
 }

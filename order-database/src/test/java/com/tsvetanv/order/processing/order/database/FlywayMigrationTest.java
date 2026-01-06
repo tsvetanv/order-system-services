@@ -75,5 +75,24 @@ class FlywayMigrationTest extends AbstractDatabaseTest {
     assertThat(updated).isGreaterThan(0);
   }
 
+  @Test
+  void ordersCanBePaginated() {
+    for (int i = 0; i < 5; i++) {
+      jdbcTemplate.update(
+        """
+          INSERT INTO orders (id, customer_id, status, created_at, updated_at)
+          VALUES (gen_random_uuid(), gen_random_uuid(), 'CREATED', now(), now())
+          """
+      );
+    }
+
+    Integer count = jdbcTemplate.queryForObject(
+      "SELECT COUNT(*) FROM orders",
+      Integer.class
+    );
+
+    assertThat(count).isGreaterThanOrEqualTo(5);
+  }
+
 }
 

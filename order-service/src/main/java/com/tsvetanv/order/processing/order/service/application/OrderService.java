@@ -11,6 +11,9 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,7 +69,25 @@ public class OrderService {
   }
 
   /**
-   * Cancels an order according to business rules.
+   * Cancels an existing order.
+   *
+   * <p><strong>Business rules:</strong></p>
+   * <ul>
+   *   <li>An order can be cancelled only if its status is {@link OrderStatus#CREATED} or {@link OrderStatus#CONFIRMED}.</li>
+   *   <li>An order cannot be cancelled if its status is {@link OrderStatus#PAID} or {@link OrderStatus#SHIPPED}.</li>
+   *   <li>Calling cancel on an already {@link OrderStatus#CANCELLED} order is idempotent and has no effect.</li>
+   * </ul>
+   *
+   * <p><strong>Behavior:</strong></p>
+   * <ul>
+   *   <li>If the order does not exist, {@link OrderNotFoundException} is thrown.</li>
+   *   <li>If cancellation is not allowed due to the current order status,
+   *       {@link OrderCancellationNotAllowedException}
+   *       is thrown.</li>
+   *   <li>On successful cancellation, the order status is set to {@link OrderStatus#CANCELLED}.</li>
+   * </ul>
+   *
+   * @param orderId the identifier of the order to cancel
    */
   @Transactional
   public void cancelOrder(UUID orderId) {
@@ -88,4 +109,13 @@ public class OrderService {
     orderRepository.save(order);
     log.info("Order cancelled | orderId={}", orderId);
   }
+
+  @Transactional(readOnly = true)
+  public Page<OrderEntity> listOrders(int limit, int offset) {
+    log.debug("Listing orders | limit={} | offset={}", limit, offset);
+    int page = offset / limit;
+    Pageable pageable = PageRequest.of(page, limit);
+    return orderRepository.findAll(pageable);
+  }
+  
 }
