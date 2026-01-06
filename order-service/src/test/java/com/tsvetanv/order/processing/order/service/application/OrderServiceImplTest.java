@@ -12,8 +12,11 @@ import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.repository.OrderRepository;
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDto;
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderItemDto;
+import com.tsvetanv.order.processing.order.service.application.money.Money;
+import com.tsvetanv.order.processing.order.service.application.pricing.PricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +36,9 @@ class OrderServiceImplTest {
 
   @Mock
   private OrderRepository orderRepository;
+
+  @Mock
+  private PricingService pricingService;
 
   @InjectMocks
   private OrderServiceImpl orderService;
@@ -292,6 +298,28 @@ class OrderServiceImplTest {
         .getOrderFor("createdAt")
         .getDirection()
     ).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+  }
+
+  // ---------------------------------------------------------------------------
+  // pricing integration (mocked)
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void pricingService_isUsedForTotalCalculation() {
+
+    OrderEntity entity = order(
+      OrderStatus.CREATED,
+      UUID.randomUUID(),
+      Instant.now()
+    );
+
+    when(pricingService.calculateOrderTotal(entity))
+      .thenReturn(new Money(new BigDecimal("20.00"), "EUR"));
+
+    Money total = pricingService.calculateOrderTotal(entity);
+
+    assertThat(total.amount()).isEqualByComparingTo("20.00");
+    assertThat(total.currency()).isEqualTo("EUR");
   }
 
 }

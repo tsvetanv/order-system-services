@@ -5,6 +5,7 @@ import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.entity.OrderItemEntity;
 import com.tsvetanv.order.processing.order.database.repository.OrderRepository;
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDto;
+import com.tsvetanv.order.processing.order.service.application.pricing.PricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
 import java.math.BigDecimal;
@@ -24,10 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderServiceImpl implements OrderService {
 
-  private static final BigDecimal INITIAL_UNIT_AMOUNT = BigDecimal.ZERO;
+  private static final BigDecimal INITIAL_UNIT_AMOUNT = new BigDecimal(
+    "10.00"); // TEMP baseline price
 
   @Autowired
   private OrderRepository orderRepository;
+
+  @Autowired
+  private PricingService pricingService;
 
   @Override
   @Transactional(readOnly = true)
