@@ -1,4 +1,4 @@
-package com.tsvetanv.order.processing.order.service.application;
+package com.tsvetanv.order.processing.order.database.domain;
 
 /**
  * Domain-level order lifecycle states.

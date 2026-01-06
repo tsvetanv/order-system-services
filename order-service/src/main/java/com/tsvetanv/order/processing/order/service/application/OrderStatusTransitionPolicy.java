@@ -1,5 +1,6 @@
 package com.tsvetanv.order.processing.order.service.application;
 
+import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import java.util.EnumSet;
 import java.util.Set;
 

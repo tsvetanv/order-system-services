@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.repository.OrderRepository;
 import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDto;

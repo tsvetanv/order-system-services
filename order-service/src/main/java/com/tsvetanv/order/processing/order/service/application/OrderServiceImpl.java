@@ -1,5 +1,6 @@
 package com.tsvetanv.order.processing.order.service.application;
 
+import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.entity.OrderItemEntity;
 import com.tsvetanv.order.processing.order.database.repository.OrderRepository;

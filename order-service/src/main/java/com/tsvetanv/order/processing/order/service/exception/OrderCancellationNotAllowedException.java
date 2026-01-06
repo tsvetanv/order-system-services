@@ -1,6 +1,6 @@
 package com.tsvetanv.order.processing.order.service.exception;
 
-import com.tsvetanv.order.processing.order.service.application.OrderStatus;
+import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import java.util.UUID;
 
 public class OrderCancellationNotAllowedException extends RuntimeException {
