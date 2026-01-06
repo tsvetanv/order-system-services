@@ -16,7 +16,29 @@ class FlywayMigrationTest extends AbstractDatabaseTest {
     Integer count = jdbcTemplate.queryForObject(
       "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'orders'",
       Integer.class);
-
     assertThat(count).isEqualTo(1);
   }
+
+  @Test
+  void orderItemsTableExists() {
+    Integer count = jdbcTemplate.queryForObject(
+      "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'order_items'",
+      Integer.class);
+    assertThat(count).isEqualTo(1);
+  }
+
+  @Test
+  void orderItemsHasForeignKey() {
+    Integer count = jdbcTemplate.queryForObject(
+      """
+        SELECT COUNT(*)
+        FROM information_schema.table_constraints
+        WHERE table_name = 'order_items'
+          AND constraint_type = 'FOREIGN KEY'
+        """,
+      Integer.class);
+
+    assertThat(count).isGreaterThan(0);
+  }
 }
+

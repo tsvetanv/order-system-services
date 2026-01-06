@@ -5,7 +5,9 @@ import com.tsvetanv.order.processing.order.api.generated.model.CreateOrderReques
 import com.tsvetanv.order.processing.order.api.generated.model.Money;
 import com.tsvetanv.order.processing.order.api.generated.model.Order;
 import com.tsvetanv.order.processing.order.api.generated.model.PagedOrdersResponse;
-import com.tsvetanv.order.processing.order.service.application.OrderApplicationService;
+import com.tsvetanv.order.processing.order.service.application.OrderService;
+import com.tsvetanv.order.processing.order.service.application.dto.CreateOrderDto;
+import com.tsvetanv.order.processing.order.service.mapping.CreateOrderMapper;
 import com.tsvetanv.order.processing.order.service.mapping.OrderMapper;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController implements OrdersApi {
 
   @Autowired
-  private OrderApplicationService orderService;
+  private OrderService orderService;
+
+  @Autowired
+  private CreateOrderMapper createOrderMapper;
 
   @Autowired
   private OrderMapper orderMapper;
@@ -29,8 +34,19 @@ public class OrderController implements OrdersApi {
   }
 
   @Override
-  public ResponseEntity<Order> createOrder(CreateOrderRequest createOrderRequest) {
-    return null; // TODO fix later
+  public ResponseEntity<Order> createOrder(CreateOrderRequest request) {
+    log.info(
+      "HTTP POST /orders | customerId={} | items={}",
+      request.getCustomer().getCustomerId(),
+      request.getItems().size()
+    );
+    CreateOrderDto createOrderDto = createOrderMapper.toDto(request);
+    UUID orderId = orderService.createOrder(createOrderDto);
+    log.debug("Fetching created order | orderId={}", orderId);
+    var entity = orderService.getOrderById(orderId);
+    Order order = orderMapper.toApi(entity);
+    log.info("Order created successfully | orderId={}", orderId);
+    return ResponseEntity.status(201).body(order);
   }
 
   @Override
