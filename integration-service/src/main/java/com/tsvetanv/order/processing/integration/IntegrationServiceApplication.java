@@ -1,4 +1,4 @@
-package com.tsvetanv.order.processing.integration.service;
+package com.tsvetanv.order.processing.integration;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

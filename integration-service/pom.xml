@@ -9,17 +9,37 @@
     <groupId>com.tsvetanv.order.processing</groupId>
     <artifactId>order-system-services</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>integration-service</artifactId>
   <name>Integration Service</name>
-  <description>Outbound communication with external systems</description>
+  <description>Outbound integration adapters for external systems</description>
 
   <dependencies>
-    <!-- Spring Boot Web -->
+    <!-- Spring Boot core -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-webflux</artifactId>
+      <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+
+    <!-- REST client support (future HTTP integrations) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- Observability (logging, metrics later) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- Lombok -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Testing -->

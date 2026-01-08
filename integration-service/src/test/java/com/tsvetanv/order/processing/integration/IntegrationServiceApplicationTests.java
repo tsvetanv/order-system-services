@@ -1,4 +1,4 @@
-package com.tsvetanv.order.processing.integration.service;
+package com.tsvetanv.order.processing.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
