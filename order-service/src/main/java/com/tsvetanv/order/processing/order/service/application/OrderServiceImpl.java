@@ -1,5 +1,9 @@
 package com.tsvetanv.order.processing.order.service.application;
 
+import com.tsvetanv.order.processing.integration.payment.PaymentRequest;
+import com.tsvetanv.order.processing.integration.payment.PaymentResult;
+import com.tsvetanv.order.processing.integration.payment.PaymentService;
+import com.tsvetanv.order.processing.integration.payment.PaymentStatus;
 import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.entity.OrderItemEntity;
@@ -10,8 +14,11 @@ import com.tsvetanv.order.processing.order.service.application.pricing.PricingSe
 import com.tsvetanv.order.processing.order.service.application.pricing.ProductPricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
+import com.tsvetanv.order.processing.order.service.exception.PaymentFailedException;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -23,6 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
+@Getter
+@Setter
 @Service
 public class OrderServiceImpl implements OrderService {
 
@@ -34,6 +43,9 @@ public class OrderServiceImpl implements OrderService {
 
   @Autowired
   private ProductPricingService productPricingService;
+
+  @Autowired
+  private PaymentService paymentService;
 
   @Override
   @Transactional(readOnly = true)
@@ -59,6 +71,7 @@ public class OrderServiceImpl implements OrderService {
       .createdAt(Instant.now())
       .build();
 
+    // Build items with pricing
     dto.getItems().forEach(item -> {
 
       Money unitPrice = productPricingService.getUnitPrice(
@@ -78,9 +91,28 @@ public class OrderServiceImpl implements OrderService {
       );
     });
 
+    // Persist before payment (important for auditability)
     orderRepository.save(order);
 
-    log.info("Order created with id={}", order.getId());
+    // Calculate total and request payment
+    Money totalAmount = pricingService.calculateOrderTotal(order);
+
+    PaymentResult paymentResult = paymentService.authorizePayment(
+      new PaymentRequest(order.getId(), order.getCustomerId(),
+        totalAmount.currency(), totalAmount.amount().toPlainString())
+    );
+
+    if (paymentResult.status() != PaymentStatus.AUTHORIZED) {
+      log.warn("Payment failed | orderId={} | status={}", order.getId(), paymentResult.status());
+      throw new PaymentFailedException(order.getId(), paymentResult.status().name());
+    }
+
+    // Payment successful → confirm order
+    order.setStatus(OrderStatus.CONFIRMED);
+    order.setUpdatedAt(Instant.now());
+    orderRepository.save(order);
+
+    log.info("Order created and confirmed | orderId={}", order.getId());
     return order.getId();
   }
 
@@ -150,6 +182,5 @@ public class OrderServiceImpl implements OrderService {
       return Sort.by(Sort.Direction.DESC, "createdAt");
     }
   }
-
 
 }

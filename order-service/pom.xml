@@ -42,6 +42,13 @@
       <version>${project.version}</version>
     </dependency>
 
+    <!-- Integration module -->
+    <dependency>
+      <groupId>com.tsvetanv.order.processing</groupId>
+      <artifactId>integration-service</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- Swagger / OpenAPI 3 annotations -->
     <dependency>
       <groupId>io.swagger.core.v3</groupId>

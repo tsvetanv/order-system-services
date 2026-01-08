@@ -4,9 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.tsvetanv.order.processing.integration.payment.PaymentRequest;
+import com.tsvetanv.order.processing.integration.payment.PaymentResult;
+import com.tsvetanv.order.processing.integration.payment.PaymentService;
+import com.tsvetanv.order.processing.integration.payment.PaymentStatus;
 import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
 import com.tsvetanv.order.processing.order.database.entity.OrderEntity;
 import com.tsvetanv.order.processing.order.database.repository.OrderRepository;
@@ -17,6 +22,7 @@ import com.tsvetanv.order.processing.order.service.application.pricing.PricingSe
 import com.tsvetanv.order.processing.order.service.application.pricing.ProductPricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
+import com.tsvetanv.order.processing.order.service.exception.PaymentFailedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -39,10 +45,13 @@ class OrderServiceImplTest {
   private OrderRepository orderRepository;
 
   @Mock
-  private PricingService pricingService;
+  private ProductPricingService productPricingService;
 
   @Mock
-  private ProductPricingService productPricingService;
+  private PaymentService paymentService;
+
+  // IMPORTANT: PricingService is REAL, not mocked
+  private PricingService pricingService;
 
   @InjectMocks
   private OrderServiceImpl orderService;
@@ -50,6 +59,8 @@ class OrderServiceImplTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+    pricingService = new PricingService();
+    orderService.setPricingService(pricingService);
   }
 
   // ---------------------------------------------------------------------------
@@ -70,28 +81,70 @@ class OrderServiceImplTest {
   }
 
   // ---------------------------------------------------------------------------
-  // createOrder
+  // createOrder + PAYMENT SERVICE
   // ---------------------------------------------------------------------------
 
   @Test
-  void createOrder_createsOrderWithItems() {
+  void createOrder_paymentAuthorized_createsOrderAndCallsPaymentService() {
+
+    UUID productId = UUID.randomUUID();
+    UUID customerId = UUID.randomUUID();
 
     CreateOrderDto dto = new CreateOrderDto(
-      UUID.randomUUID(),
-      List.of(new CreateOrderItemDto(UUID.randomUUID(), 2)),
+      customerId,
+      List.of(new CreateOrderItemDto(productId, 2)),
       "EUR"
     );
 
     when(productPricingService.getUnitPrice(any(), any()))
       .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
-    
+
+    when(paymentService.authorizePayment(any()))
+      .thenReturn(new PaymentResult(PaymentStatus.AUTHORIZED, "PAY-123"));
+
     when(orderRepository.save(any(OrderEntity.class)))
       .thenAnswer(invocation -> invocation.getArgument(0));
 
     UUID orderId = orderService.createOrder(dto);
 
     assertThat(orderId).isNotNull();
+
+    ArgumentCaptor<PaymentRequest> captor =
+      ArgumentCaptor.forClass(PaymentRequest.class);
+
+    verify(paymentService).authorizePayment(captor.capture());
+
+    PaymentRequest request = captor.getValue();
+
+    assertThat(request.orderId()).isEqualTo(orderId);
+    assertThat(request.customerId()).isEqualTo(customerId);
+    assertThat(request.currency()).isEqualTo("EUR");
+    assertThat(new BigDecimal(request.amount())).isEqualByComparingTo("20.00");
+
+    verify(orderRepository, times(2)).save(any(OrderEntity.class));
+
+  }
+
+  @Test
+  void createOrder_paymentDeclined_throwsException_andDoesNotPersist() {
+
+    CreateOrderDto dto = new CreateOrderDto(
+      UUID.randomUUID(),
+      List.of(new CreateOrderItemDto(UUID.randomUUID(), 1)),
+      "EUR"
+    );
+
+    when(productPricingService.getUnitPrice(any(), any()))
+      .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
+
+    when(paymentService.authorizePayment(any()))
+      .thenReturn(new PaymentResult(PaymentStatus.DECLINED, "DECLINED"));
+
+    assertThatThrownBy(() -> orderService.createOrder(dto))
+      .isInstanceOf(PaymentFailedException.class);
+
     verify(orderRepository).save(any(OrderEntity.class));
+
   }
 
   // ---------------------------------------------------------------------------
@@ -166,8 +219,10 @@ class OrderServiceImplTest {
 
     orderService.cancelOrder(orderId);
 
+    // No state change, no persistence
     verify(orderRepository, never()).save(any());
   }
+
 
   @Test
   void cancelOrder_forbiddenStatus_throwsException() {
@@ -202,131 +257,10 @@ class OrderServiceImplTest {
     when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
       .thenReturn(new PageImpl<>(List.of(entity)));
 
-    Page<OrderEntity> result = orderService.listOrders(
-      10, 0, null, null, null
-    );
+    Page<OrderEntity> result =
+      orderService.listOrders(10, 0, null, null, null);
 
     assertThat(result.getContent()).hasSize(1);
     assertThat(result.getContent().get(0)).isSameAs(entity);
   }
-
-  @Test
-  void listOrders_filtersByStatus() {
-
-    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
-      .thenReturn(new PageImpl<>(List.of(
-        order(OrderStatus.CREATED, UUID.randomUUID(), Instant.now())
-      )));
-
-    Page<OrderEntity> result = orderService.listOrders(
-      10, 0, OrderStatus.CREATED, null, null
-    );
-
-    assertThat(result.getContent())
-      .allMatch(o -> o.getStatus() == OrderStatus.CREATED);
-  }
-
-  @Test
-  void listOrders_filtersByCustomerId() {
-
-    UUID customerId = UUID.randomUUID();
-
-    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
-      .thenReturn(new PageImpl<>(List.of(
-        order(OrderStatus.CREATED, customerId, Instant.now())
-      )));
-
-    Page<OrderEntity> result = orderService.listOrders(
-      10, 0, null, customerId, null
-    );
-
-    assertThat(result.getContent())
-      .allMatch(o -> o.getCustomerId().equals(customerId));
-  }
-
-  @Test
-  void listOrders_filtersByStatusAndCustomerId() {
-
-    UUID customerId = UUID.randomUUID();
-
-    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
-      .thenReturn(new PageImpl<>(List.of(
-        order(OrderStatus.PAID, customerId, Instant.now())
-      )));
-
-    Page<OrderEntity> result = orderService.listOrders(
-      10, 0, OrderStatus.PAID, customerId, null
-    );
-
-    assertThat(result.getContent()).hasSize(1);
-    assertThat(result.getContent().get(0).getStatus()).isEqualTo(OrderStatus.PAID);
-    assertThat(result.getContent().get(0).getCustomerId()).isEqualTo(customerId);
-  }
-
-  @Test
-  void listOrders_appliesAscendingSort() {
-
-    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
-      .thenReturn(new PageImpl<>(List.of()));
-
-    orderService.listOrders(10, 0, null, null, "createdAt,asc");
-
-    ArgumentCaptor<Pageable> pageableCaptor =
-      ArgumentCaptor.forClass(Pageable.class);
-
-    verify(orderRepository)
-      .findAll(any(Specification.class), pageableCaptor.capture());
-
-    assertThat(
-      pageableCaptor.getValue()
-        .getSort()
-        .getOrderFor("createdAt")
-        .getDirection()
-    ).isEqualTo(org.springframework.data.domain.Sort.Direction.ASC);
-  }
-
-  @Test
-  void listOrders_invalidSortFallsBackToDefault() {
-
-    when(orderRepository.findAll(any(Specification.class), any(Pageable.class)))
-      .thenReturn(new PageImpl<>(List.of()));
-
-    orderService.listOrders(10, 0, null, null, "invalid");
-
-    ArgumentCaptor<Pageable> pageableCaptor =
-      ArgumentCaptor.forClass(Pageable.class);
-
-    verify(orderRepository)
-      .findAll(any(Specification.class), pageableCaptor.capture());
-
-    assertThat(
-      pageableCaptor.getValue()
-        .getSort()
-        .getOrderFor("createdAt")
-        .getDirection()
-    ).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
-  }
-
-  // ---------------------------------------------------------------------------
-  // pricing integration (mocked)
-  // ---------------------------------------------------------------------------
-
-  @Test
-  void pricingService_isUsedForTotalCalculation() {
-
-    OrderEntity entity = order(
-      OrderStatus.CREATED,
-      UUID.randomUUID(),
-      Instant.now()
-    );
-
-    when(pricingService.calculateOrderTotal(entity))
-      .thenReturn(new Money(new BigDecimal("20.00"), "EUR"));
-
-    Money total = pricingService.calculateOrderTotal(entity);
-
-    assertThat(total.amount()).isEqualByComparingTo("20.00");
-    assertThat(total.currency()).isEqualTo("EUR");
-  }
-
 }

@@ -24,9 +24,9 @@
   <!-- ENABLE MODULES -->
   <modules>
     <module>order-api</module>
-    <module>order-service</module>
     <module>order-database</module>
     <module>integration-service</module>
+    <module>order-service</module>
   </modules>
 
   <properties>
