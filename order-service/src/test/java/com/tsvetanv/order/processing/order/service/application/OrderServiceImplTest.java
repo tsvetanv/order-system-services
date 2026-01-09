@@ -12,6 +12,8 @@ import com.tsvetanv.order.processing.integration.inventory.InventoryCheckRequest
 import com.tsvetanv.order.processing.integration.inventory.InventoryCheckResult;
 import com.tsvetanv.order.processing.integration.inventory.InventoryService;
 import com.tsvetanv.order.processing.integration.inventory.InventoryUnavailableException;
+import com.tsvetanv.order.processing.integration.notification.NotificationService;
+import com.tsvetanv.order.processing.integration.notification.OrderNotification;
 import com.tsvetanv.order.processing.integration.payment.PaymentFailedException;
 import com.tsvetanv.order.processing.integration.payment.PaymentRequest;
 import com.tsvetanv.order.processing.integration.payment.PaymentResult;
@@ -67,6 +69,10 @@ class OrderServiceImplTest {
   @InjectMocks
   private OrderServiceImpl orderService;
 
+  @Mock
+  private NotificationService notificationService;
+
+
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
@@ -92,8 +98,58 @@ class OrderServiceImplTest {
   }
 
   // ---------------------------------------------------------------------------
-  // createOrder — PAYMENT + INVENTORY
+  // createOrder — PAYMENT + INVENTORY + NOTIFICATION
   // ---------------------------------------------------------------------------
+
+  @Test
+  void createOrder_sendsNotification_whenOrderConfirmed() {
+
+    UUID productId = UUID.randomUUID();
+    UUID customerId = UUID.randomUUID();
+
+    CreateOrderDto dto = new CreateOrderDto(
+      customerId,
+      List.of(new CreateOrderItemDto(productId, 1)),
+      "EUR"
+    );
+
+    when(productPricingService.getUnitPrice(any(), any()))
+      .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
+
+    when(paymentService.authorizePayment(any()))
+      .thenReturn(new PaymentResult(PaymentStatus.AUTHORIZED, "PAY-123"));
+
+    when(orderRepository.save(any(OrderEntity.class)))
+      .thenAnswer(invocation -> invocation.getArgument(0));
+
+    UUID orderId = orderService.createOrder(dto);
+
+    assertThat(orderId).isNotNull();
+
+    verify(notificationService, times(1))
+      .send(any(OrderNotification.class));
+  }
+
+  @Test
+  void createOrder_doesNotSendNotification_whenPaymentFails() {
+
+    CreateOrderDto dto = new CreateOrderDto(
+      UUID.randomUUID(),
+      List.of(new CreateOrderItemDto(UUID.randomUUID(), 1)),
+      "EUR"
+    );
+
+    when(productPricingService.getUnitPrice(any(), any()))
+      .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
+
+    when(paymentService.authorizePayment(any()))
+      .thenReturn(new PaymentResult(PaymentStatus.DECLINED, "DECLINED"));
+
+    assertThatThrownBy(() -> orderService.createOrder(dto))
+      .isInstanceOf(PaymentFailedException.class);
+
+    verify(notificationService, never()).send(any());
+  }
 
   @Test
   void createOrder_inventoryAvailable_andPaymentAuthorized_createsConfirmedOrder() {

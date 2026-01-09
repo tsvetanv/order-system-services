@@ -2,6 +2,8 @@ package com.tsvetanv.order.processing.order.service.application;
 
 import com.tsvetanv.order.processing.integration.inventory.InventoryCheckRequest;
 import com.tsvetanv.order.processing.integration.inventory.InventoryService;
+import com.tsvetanv.order.processing.integration.notification.NotificationService;
+import com.tsvetanv.order.processing.integration.notification.OrderNotification;
 import com.tsvetanv.order.processing.integration.payment.PaymentFailedException;
 import com.tsvetanv.order.processing.integration.payment.PaymentRequest;
 import com.tsvetanv.order.processing.integration.payment.PaymentResult;
@@ -55,6 +57,9 @@ public class OrderServiceImpl implements OrderService {
 
   @Autowired
   private InventoryIntegrationMapper inventoryIntegrationMapper;
+
+  @Autowired
+  private NotificationService notificationService;
 
   @Override
   @Transactional(readOnly = true)
@@ -126,6 +131,11 @@ public class OrderServiceImpl implements OrderService {
     order.setStatus(OrderStatus.CONFIRMED);
     order.setUpdatedAt(Instant.now());
     orderRepository.save(order);
+
+    // Notification after confirmation
+    notificationService.send(
+      new OrderNotification(order.getId(), order.getCustomerId(), "ORDER_CONFIRMED", Instant.now())
+    );
 
     log.info("Order created and confirmed | orderId={}", order.getId());
     return order.getId();

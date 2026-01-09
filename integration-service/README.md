@@ -279,6 +279,41 @@ Future iterations may introduce:
 
 All changes will remain **isolated inside the Integration Service**.
 
+## Notification Integration (Current Iteration Scope)
+
+The Notification integration represents outbound communication to inform
+external systems or users about order lifecycle events.
+
+### Purpose
+
+- Emit notifications for significant order state changes
+- Demonstrate event-style integration without infrastructure complexity
+- Decouple order processing from delivery mechanisms
+
+### Current Implementation
+
+- Synchronous, fire-and-forget invocation
+- Stubbed implementation that logs notifications
+- No retries or delivery guarantees
+
+### What Is Explicitly Out of Scope
+
+- Email, SMS, or push notification providers
+- Templates and localization
+- Retry, dead-letter queues, or delivery tracking
+- User preferences or subscription management
+
+### Evolution Strategy
+
+In future iterations, this integration can evolve into:
+
+- Asynchronous event publishing
+- Message brokers (Kafka, SNS/SQS)
+- Independent Notification microservice
+
+These changes will remain isolated within the Integration Service.
+
+
 ---
 
 ## Key Architectural Rule
