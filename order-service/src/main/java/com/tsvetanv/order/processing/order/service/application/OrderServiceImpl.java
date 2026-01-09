@@ -162,22 +162,52 @@ public class OrderServiceImpl implements OrderService {
   public void cancelOrder(UUID orderId) {
     log.info("Cancelling order | orderId={}", orderId);
 
+    // Load order aggregate
     OrderEntity order = orderRepository.findById(orderId)
       .orElseThrow(() -> new OrderNotFoundException(orderId));
 
     OrderStatus currentStatus = order.getStatus();
     if (currentStatus == OrderStatus.CANCELLED) {
       log.info("Order already cancelled | orderId={}", orderId);
-      return; // idempotent
+      return;
     }
+
+    // Validate business rule
     if (!OrderStatusTransitionPolicy.canCancel(currentStatus)) {
       throw new OrderCancellationNotAllowedException(orderId, currentStatus);
     }
+
+    // Apply state transition
     order.setStatus(OrderStatus.CANCELLED);
     order.setUpdatedAt(Instant.now());
+
+    // Persist state change
     orderRepository.save(order);
+
+    // Notify external systems (non-blocking)
+    notificationService.send(
+      new OrderNotification(
+        order.getId(),
+        order.getCustomerId(),
+        "ORDER_CANCELLED",
+        Instant.now()
+      )
+    );
+
+    // Report cancellation to accounting (best effort)
+    accountingService.report(
+      new AccountingRecord(
+        order.getId(),
+        order.getCustomerId(),
+        "N/A",
+        "0.00",
+        Instant.now()
+      )
+    );
+
     log.info("Order cancelled | orderId={}", orderId);
   }
+
 
   @Override
   @Transactional(readOnly = true)

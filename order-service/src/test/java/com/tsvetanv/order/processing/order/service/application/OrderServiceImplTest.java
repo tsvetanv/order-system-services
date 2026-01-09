@@ -383,6 +383,93 @@ class OrderServiceImplTest {
   // ---------------------------------------------------------------------------
 
   @Test
+  void cancelOrder_sendsNotification_whenCancelled() {
+
+    UUID orderId = UUID.randomUUID();
+
+    OrderEntity entity = OrderEntity.builder()
+      .id(orderId)
+      .status(OrderStatus.CREATED)
+      .customerId(UUID.randomUUID())
+      .createdAt(Instant.now())
+      .build();
+
+    when(orderRepository.findById(orderId))
+      .thenReturn(Optional.of(entity));
+
+    orderService.cancelOrder(orderId);
+
+    verify(notificationService, times(1))
+      .send(any(OrderNotification.class));
+  }
+
+  @Test
+  void cancelOrder_reportsAccounting_whenCancelled() {
+
+    UUID orderId = UUID.randomUUID();
+
+    OrderEntity entity = OrderEntity.builder()
+      .id(orderId)
+      .status(OrderStatus.CREATED)
+      .customerId(UUID.randomUUID())
+      .createdAt(Instant.now())
+      .build();
+
+    when(orderRepository.findById(orderId))
+      .thenReturn(Optional.of(entity));
+
+    orderService.cancelOrder(orderId);
+
+    verify(accountingService, times(1))
+      .report(any(AccountingRecord.class));
+  }
+
+  @Test
+  void cancelOrder_alreadyCancelled_doesNotCallIntegrations() {
+
+    UUID orderId = UUID.randomUUID();
+
+    OrderEntity entity = OrderEntity.builder()
+      .id(orderId)
+      .status(OrderStatus.CANCELLED)
+      .customerId(UUID.randomUUID())
+      .createdAt(Instant.now())
+      .build();
+
+    when(orderRepository.findById(orderId))
+      .thenReturn(Optional.of(entity));
+
+    orderService.cancelOrder(orderId);
+
+    verify(notificationService, never()).send(any());
+    verify(accountingService, never()).report(any());
+    verify(orderRepository, never()).save(any());
+  }
+
+  @Test
+  void cancelOrder_forbiddenStatus_doesNotCallIntegrations() {
+
+    UUID orderId = UUID.randomUUID();
+
+    OrderEntity entity = OrderEntity.builder()
+      .id(orderId)
+      .status(OrderStatus.SHIPPED)
+      .customerId(UUID.randomUUID())
+      .createdAt(Instant.now())
+      .build();
+
+    when(orderRepository.findById(orderId))
+      .thenReturn(Optional.of(entity));
+
+    assertThatThrownBy(() -> orderService.cancelOrder(orderId))
+      .isInstanceOf(OrderCancellationNotAllowedException.class);
+
+    verify(notificationService, never()).send(any());
+    verify(accountingService, never()).report(any());
+    verify(orderRepository, never()).save(any());
+  }
+
+  @Test
   void cancelOrder_allowedStatus_changesStatusToCancelled() {
 
     UUID orderId = UUID.randomUUID();
