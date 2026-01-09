@@ -137,10 +137,154 @@ All such changes will occur inside this module without impacting the Order Servi
 
 ---
 
+## Payment Integration (Current Iteration Scope)
+
+### Purpose
+
+The Payment Integration models **payment authorization** as a coordination step
+in the order lifecycle.
+
+It deliberately **does not implement real payment execution**.
+
+---
+
+### Current Contract
+
+The Payment Integration exposes a **single synchronous authorization operation**.
+
+```java
+PaymentResult authorizePayment(PaymentRequest request);
+```
+
+Characteristics:
+
+- request/response interaction
+- deterministic, stubbed behavior
+- no persistence inside Integration Service
+
+---
+
+### Supported Outcomes
+
+- **AUTHORIZED** — payment approved
+- **DECLINED** — payment rejected
+
+No additional payment states are modeled in the current iteration.
+
+---
+
+### Failure Handling
+
+- Authorization failures are returned explicitly
+- The Order Service decides how to react
+- Database consistency is ensured via transactional rollback
+- No retries or compensation logic are implemented
+
+---
+
+### Scope Decision (Intentional)
+
+Out of scope for this iteration:
+
+- payment capture / settlement
+- refunds
+- asynchronous callbacks (webhooks)
+- idempotency handling
+- regulatory and compliance concerns
+
+This scope keeps the focus on **architecture structure**, not payment complexity.
+
+---
+
+### Evolution Path
+
+Future iterations may introduce:
+
+- asynchronous payment workflows
+- retry and idempotency mechanisms
+- real HTTP adapters
+- extraction into a standalone Payment Service
+
+All changes will remain **isolated inside the Integration Service**.
+
+---
+
+## Inventory Integration (Current Iteration Scope)
+
+### Purpose
+
+The Inventory Integration models **product availability validation**
+as a coordination step before order confirmation.
+
+It intentionally **does not manage stock reservations or withdrawals**.
+
+---
+
+### Current Contract
+
+The Inventory Integration exposes a **single synchronous availability check**.
+
+```java
+InventoryCheckResult checkAvailability(InventoryRequest request);
+
+```
+
+Characteristics:
+
+- deterministic, stubbed response
+- read-only interaction
+- no state mutation
+
+---
+
+### Supported Outcomes
+
+- **AVAILABLE** — sufficient inventory
+- **UNAVAILABLE** — insufficient inventory
+
+Partial reservations and backorders are not modeled.
+
+---
+
+### Failure Handling
+
+- Availability failures are explicit
+- The Order Service controls order state transitions
+- No retries or fallback strategies are implemented
+
+---
+
+### Scope Decision (Intentional)
+
+Out of scope for this iteration:
+
+- inventory reservation and release
+- stock withdrawal
+- distributed locking
+- eventual consistency mechanisms
+
+This avoids introducing **distributed transaction complexity**
+in the modular monolith.
+
+---
+
+### Evolution Path
+
+Future iterations may introduce:
+
+- reservation and release workflows
+- asynchronous inventory confirmation
+- compensation logic
+- extraction into a dedicated Inventory Service
+
+All changes will remain **isolated inside the Integration Service**.
+
+---
+
 ## Key Architectural Rule
 
-> The Integration Service depends on nothing in the domain.  
-> The domain depends only on integration interfaces.
+> The Integration Service owns **external coordination**.  
+> The Order Service owns **business decisions**.  
+> External systems own **execution and state**.
 
-This rule is strictly enforced.
 

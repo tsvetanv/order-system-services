@@ -1,4 +1,4 @@
-package com.tsvetanv.order.processing.order.service.exception;
+package com.tsvetanv.order.processing.integration.payment;
 
 import java.util.UUID;
 

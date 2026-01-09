@@ -8,6 +8,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.tsvetanv.order.processing.integration.inventory.InventoryCheckRequest;
+import com.tsvetanv.order.processing.integration.inventory.InventoryCheckResult;
+import com.tsvetanv.order.processing.integration.inventory.InventoryService;
+import com.tsvetanv.order.processing.integration.inventory.InventoryUnavailableException;
+import com.tsvetanv.order.processing.integration.payment.PaymentFailedException;
 import com.tsvetanv.order.processing.integration.payment.PaymentRequest;
 import com.tsvetanv.order.processing.integration.payment.PaymentResult;
 import com.tsvetanv.order.processing.integration.payment.PaymentService;
@@ -22,7 +27,7 @@ import com.tsvetanv.order.processing.order.service.application.pricing.PricingSe
 import com.tsvetanv.order.processing.order.service.application.pricing.ProductPricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
-import com.tsvetanv.order.processing.order.service.exception.PaymentFailedException;
+import com.tsvetanv.order.processing.order.service.mapping.integration.InventoryIntegrationMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -49,6 +54,12 @@ class OrderServiceImplTest {
 
   @Mock
   private PaymentService paymentService;
+
+  @Mock
+  private InventoryService inventoryService;
+
+  @Mock
+  private InventoryIntegrationMapper inventoryIntegrationMapper;
 
   // IMPORTANT: PricingService is REAL, not mocked
   private PricingService pricingService;
@@ -81,8 +92,84 @@ class OrderServiceImplTest {
   }
 
   // ---------------------------------------------------------------------------
-  // createOrder + PAYMENT SERVICE
+  // createOrder — PAYMENT + INVENTORY
   // ---------------------------------------------------------------------------
+
+  @Test
+  void createOrder_inventoryAvailable_andPaymentAuthorized_createsConfirmedOrder() {
+
+    UUID productId = UUID.randomUUID();
+    UUID customerId = UUID.randomUUID();
+
+    CreateOrderDto dto = new CreateOrderDto(
+      customerId,
+      List.of(new CreateOrderItemDto(productId, 2)),
+      "EUR"
+    );
+
+    when(productPricingService.getUnitPrice(any(), any()))
+      .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
+
+    when(inventoryIntegrationMapper.toInventoryCheckRequest(any()))
+      .thenReturn(new InventoryCheckRequest(UUID.randomUUID(), List.of()));
+
+    when(inventoryService.checkAvailability(any()))
+      .thenReturn(new InventoryCheckResult(true));
+
+    when(paymentService.authorizePayment(any()))
+      .thenReturn(new PaymentResult(PaymentStatus.AUTHORIZED, "PAY-123"));
+
+    when(orderRepository.save(any(OrderEntity.class)))
+      .thenAnswer(invocation -> invocation.getArgument(0));
+
+    UUID orderId = orderService.createOrder(dto);
+
+    assertThat(orderId).isNotNull();
+
+    // Inventory interaction
+    verify(inventoryService).checkAvailability(any());
+
+    // Payment interaction
+    ArgumentCaptor<PaymentRequest> paymentCaptor =
+      ArgumentCaptor.forClass(PaymentRequest.class);
+
+    verify(paymentService).authorizePayment(paymentCaptor.capture());
+
+    PaymentRequest paymentRequest = paymentCaptor.getValue();
+
+    assertThat(paymentRequest.customerId()).isEqualTo(customerId);
+    assertThat(paymentRequest.currency()).isEqualTo("EUR");
+    assertThat(new BigDecimal(paymentRequest.amount()))
+      .isEqualByComparingTo("20.00");
+
+    // Order persisted twice: CREATED → CONFIRMED
+    verify(orderRepository, times(2)).save(any(OrderEntity.class));
+  }
+
+  @Test
+  void createOrder_inventoryUnavailable_throwsException_andStopsFlow() {
+
+    CreateOrderDto dto = new CreateOrderDto(
+      UUID.randomUUID(),
+      List.of(new CreateOrderItemDto(UUID.randomUUID(), 1)),
+      "EUR"
+    );
+
+    when(productPricingService.getUnitPrice(any(), any()))
+      .thenReturn(new Money(new BigDecimal("10.00"), "EUR"));
+
+    when(inventoryIntegrationMapper.toInventoryCheckRequest(any()))
+      .thenReturn(new InventoryCheckRequest(UUID.randomUUID(), List.of()));
+
+    when(inventoryService.checkAvailability(any()))
+      .thenThrow(new InventoryUnavailableException("No stock"));
+
+    assertThatThrownBy(() -> orderService.createOrder(dto))
+      .isInstanceOf(InventoryUnavailableException.class);
+
+    verify(paymentService, never()).authorizePayment(any());
+    verify(orderRepository, never()).save(any());
+  }
 
   @Test
   void createOrder_paymentAuthorized_createsOrderAndCallsPaymentService() {

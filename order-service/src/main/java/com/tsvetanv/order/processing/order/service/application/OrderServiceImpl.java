@@ -1,5 +1,8 @@
 package com.tsvetanv.order.processing.order.service.application;
 
+import com.tsvetanv.order.processing.integration.inventory.InventoryCheckRequest;
+import com.tsvetanv.order.processing.integration.inventory.InventoryService;
+import com.tsvetanv.order.processing.integration.payment.PaymentFailedException;
 import com.tsvetanv.order.processing.integration.payment.PaymentRequest;
 import com.tsvetanv.order.processing.integration.payment.PaymentResult;
 import com.tsvetanv.order.processing.integration.payment.PaymentService;
@@ -14,7 +17,7 @@ import com.tsvetanv.order.processing.order.service.application.pricing.PricingSe
 import com.tsvetanv.order.processing.order.service.application.pricing.ProductPricingService;
 import com.tsvetanv.order.processing.order.service.exception.OrderCancellationNotAllowedException;
 import com.tsvetanv.order.processing.order.service.exception.OrderNotFoundException;
-import com.tsvetanv.order.processing.order.service.exception.PaymentFailedException;
+import com.tsvetanv.order.processing.order.service.mapping.integration.InventoryIntegrationMapper;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
@@ -47,6 +50,12 @@ public class OrderServiceImpl implements OrderService {
   @Autowired
   private PaymentService paymentService;
 
+  @Autowired
+  private InventoryService inventoryService;
+
+  @Autowired
+  private InventoryIntegrationMapper inventoryIntegrationMapper;
+
   @Override
   @Transactional(readOnly = true)
   public OrderEntity getOrderById(UUID orderId) {
@@ -64,6 +73,7 @@ public class OrderServiceImpl implements OrderService {
   public UUID createOrder(CreateOrderDto dto) {
     log.info("Creating order for customerId={}", dto.getCustomerId());
 
+    // Create order aggregate
     OrderEntity order = OrderEntity.builder()
       .id(UUID.randomUUID())
       .customerId(dto.getCustomerId())
@@ -71,7 +81,7 @@ public class OrderServiceImpl implements OrderService {
       .createdAt(Instant.now())
       .build();
 
-    // Build items with pricing
+    // Resolve pricing & build order items
     dto.getItems().forEach(item -> {
 
       Money unitPrice = productPricingService.getUnitPrice(
@@ -91,7 +101,12 @@ public class OrderServiceImpl implements OrderService {
       );
     });
 
-    // Persist before payment (important for auditability)
+    // Check inventory availability (integration boundary)
+    InventoryCheckRequest inventoryRequest =
+      inventoryIntegrationMapper.toInventoryCheckRequest(order);
+    inventoryService.checkAvailability(inventoryRequest);
+
+    // Persist initial state before payment (important for auditability)
     orderRepository.save(order);
 
     // Calculate total and request payment
