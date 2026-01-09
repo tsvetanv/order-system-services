@@ -1,5 +1,7 @@
 package com.tsvetanv.order.processing.order.service.application;
 
+import com.tsvetanv.order.processing.integration.accounting.AccountingRecord;
+import com.tsvetanv.order.processing.integration.accounting.AccountingService;
 import com.tsvetanv.order.processing.integration.inventory.InventoryCheckRequest;
 import com.tsvetanv.order.processing.integration.inventory.InventoryService;
 import com.tsvetanv.order.processing.integration.notification.NotificationService;
@@ -60,6 +62,9 @@ public class OrderServiceImpl implements OrderService {
 
   @Autowired
   private NotificationService notificationService;
+
+  @Autowired
+  private AccountingService accountingService;
 
   @Override
   @Transactional(readOnly = true)
@@ -135,6 +140,17 @@ public class OrderServiceImpl implements OrderService {
     // Notification after confirmation
     notificationService.send(
       new OrderNotification(order.getId(), order.getCustomerId(), "ORDER_CONFIRMED", Instant.now())
+    );
+
+    // Accounting (non-blocking, best effort)
+    accountingService.report(
+      new AccountingRecord(
+        order.getId(),
+        order.getCustomerId(),
+        totalAmount.currency(),
+        totalAmount.amount().toPlainString(),
+        Instant.now()
+      )
     );
 
     log.info("Order created and confirmed | orderId={}", order.getId());

@@ -279,6 +279,8 @@ Future iterations may introduce:
 
 All changes will remain **isolated inside the Integration Service**.
 
+---
+
 ## Notification Integration (Current Iteration Scope)
 
 The Notification integration represents outbound communication to inform
@@ -313,6 +315,39 @@ In future iterations, this integration can evolve into:
 
 These changes will remain isolated within the Integration Service.
 
+## Accounting Integration (Current Iteration Scope)
+
+The Accounting integration reports finalized orders for financial tracking
+and compliance purposes.
+
+### Purpose
+
+- Emit immutable financial facts after order confirmation
+- Decouple accounting concerns from order processing logic
+- Preserve auditability without blocking business flow
+
+### Current Implementation
+
+- Synchronous, best-effort reporting
+- Stub implementation that logs records
+- No feedback loop to Order Service
+
+### What Is Explicitly Out of Scope
+
+- Financial reconciliation
+- Idempotency handling
+- Batch reporting
+- Error recovery or retries
+
+### Evolution Strategy
+
+This integration can later evolve into:
+
+- Asynchronous event publishing
+- Dedicated accounting microservice
+- Compliance-driven reconciliation flows
+
+All changes will remain isolated within the Integration Service.
 
 ---
 
