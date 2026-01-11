@@ -1,11 +1,10 @@
+# Used for your locally running Postgres instance
 spring:
-  application:
-    name: order-database
   datasource:
     url: jdbc:postgresql://localhost:5432/orders
     username: orders
     password: orders
-
+    driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
     locations: classpath:db/migration

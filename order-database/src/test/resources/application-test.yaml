@@ -1,0 +1,5 @@
+# Used by Testcontainers - no URL needed as @ServiceConnection handles it
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
