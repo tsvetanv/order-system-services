@@ -47,6 +47,11 @@ class OrderControllerIntegrationTest {
   @MockBean
   private OrderMapper orderMapper;
 
+  @Test
+  void contextLoads() throws Exception {
+    // This confirms the controller can start without needing a DB
+  }
+
   // ---------------------------------------------------------------------------
   // POST /orders
   // ---------------------------------------------------------------------------

@@ -90,12 +90,16 @@
 
         <!-- Google Java Format (enforced via Maven, not editor) -->
         <plugin>
-          <groupId>com.coveo</groupId>
+          <groupId>com.hubspot.maven</groupId>
           <artifactId>fmt-maven-plugin</artifactId>
-          <version>2.16</version>
-          <configuration>
-            <style>GOOGLE</style>
-          </configuration>
+          <version>2.25</version> <!-- Current stable version for 2026 -->
+          <executions>
+            <execution>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
         </plugin>
         <plugin>
           <groupId>org.springframework.boot</groupId>

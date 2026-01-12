@@ -16,6 +16,11 @@
   <name>Integration Service</name>
   <description>Outbound integration adapters for external systems</description>
 
+  <properties>
+    <!-- Default profile for standalone mvn test runs -->
+    <spring.profiles.active>test</spring.profiles.active>
+  </properties>
+
   <dependencies>
     <!-- Spring Boot core -->
     <dependency>
@@ -52,6 +57,13 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>-Dspring.profiles.active=${spring.profiles.active}</argLine>
+        </configuration>
+      </plugin>
       <!-- Standard JAR plugin, no spring-boot-maven-plugin needed for libraries -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  # Note: @ServiceConnection from the imported config handles the URL/User/Pass
+  flyway:
+    enabled: true
+    locations: classpath:db/migration

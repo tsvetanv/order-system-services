@@ -15,6 +15,11 @@
   <name>Order Database</name>
   <description>Database access and migration layer</description>
 
+  <properties>
+    <spring.profiles.active>test</spring.profiles.active>
+  </properties>
+
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -76,6 +81,10 @@
         <!-- Version is inherited from spring-boot-starter-parent -->
         <configuration>
           <argLine>-Duser.timezone=UTC</argLine>
+          <systemPropertyVariables>
+            <!-- This sets 'test' as the default if no other profile is provided -->
+            <spring.profiles.active>${spring.profiles.active}</spring.profiles.active>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
     </plugins>
