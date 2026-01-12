@@ -394,19 +394,82 @@ Then retry:
 
 This is a one-time setup step.
 
+---
+
+## Running the Application (Docker)
+
+In addition to running the database in isolation, the full Order Processing System
+(application + database) can be started locally using Docker Compose.
+
+This setup runs:
+
+- `order-service` as a Docker container
+- PostgreSQL as a Docker container
+- The application using the `local` Spring profile
+
+All configuration is provided via environment variables and Docker networking.
 
 ---
 
-## Next Phase
+### Start Full Application Stack
 
-The next logical phase is **deployment**, including:
+#### Linux / macOS / WSL
 
-- Dockerization
-- Environment profiles
-- Database provisioning
-- CI/CD pipelines
-- Runtime configuration
-- Observability
+```bash
+./scripts/app-up.sh
+```
+
+#### Windows
+
+```bash
+scripts\app-up.bat
+```
+
+This will:
+
+1. Stop any standalone database containers (if running)
+2. Build all modules and the executable application JAR
+3. Build the Docker image for order-service
+4. Start the application and database containers
+5. Apply Flyway migrations automatically on startup
+
+The API will be available at:
+
+```code
+http://localhost:8081
+```
+
+---
+
+### Stop Full Application Stack
+
+#### Linux / macOS / WSL
+
+```bash
+./scripts/app-down.sh
+```
+
+#### Windows
+
+```bash
+scripts\app-down.bat
+```
+
+This stops all containers and cleans up Docker networks and volumes
+used by the local application stack.
+
+---
+
+### Docker Compose Structure
+
+The project uses two Docker Compose configurations:
+
+- `docker-compose.db.yml`  
+  Starts only PostgreSQL (useful for local development and database testing)
+- `docker-compose.yml`  
+  Starts the full system (application + database)
+
+This separation keeps concerns clear and supports multiple development workflows.
 
 ---
 
@@ -416,5 +479,3 @@ This repository serves as both:
 
 - A production-ready system
 - A reference implementation for Architecture as Code
-
-
