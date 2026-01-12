@@ -7,11 +7,11 @@ import org.springframework.context.annotation.Profile;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @Configuration
-@Profile("test") // Only loads when "test" profile is active
+@Profile("test") // Only loads when "test" profile is active, i.e. when using Testcontainers
 public class PostgresTestContainerConfig {
 
   @Bean
-  @ServiceConnection
+  @ServiceConnection // Automatically bridges container to Spring DataSource
   public PostgreSQLContainer<?> postgresContainer() {
     return new PostgreSQLContainer<>("postgres:16-alpine")
       .withDatabaseName("orders")

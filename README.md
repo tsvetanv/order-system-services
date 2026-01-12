@@ -51,6 +51,9 @@ The system is built on the following principles:
 
 ## High-Level Module Structure
 
+The `order-system-services` repository is organized as a **modular monolith**
+consisting of a single executable Spring Boot application and several internal modules.
+
 ```
 order-system-services
 │
@@ -62,6 +65,22 @@ order-system-services
 ```
 
 Each module has a **single, well-defined responsibility**.
+
+### Module Roles & Runtime Characteristics
+
+| Module                | Role                                          | Runtime Type                 |
+|-----------------------|-----------------------------------------------|------------------------------|
+| `order-api`           | Public API contract (OpenAPI source of truth) | Contract module (no runtime) |
+| `order-service`       | Application & domain logic                    | **Spring Boot application**  |
+| `order-database`      | Persistence, schema, migrations               | Library module               |
+| `integration-service` | External system integrations                  | Library module               |
+
+**Key Points**
+
+- Exactly **one** module (`order-service`) is a Spring Boot application
+- All other modules are **internal libraries** contributing beans via the classpath
+- The system is deployed as a **single unit**, preserving modular boundaries internally
+- Module responsibilities are enforced by **dependencies**, not by separate runtimes
 
 ---
 
@@ -266,6 +285,115 @@ At this stage, the system is:
     - CI/CD
     - Environment configuration
     - Infrastructure as Code
+
+## Local Development & Runtime Environment
+
+This section focuses on **local execution only**. Cloud deployment concerns are intentionally
+out of scope here and are addressed in the **Deployment Readiness** section.
+
+The goal is to describe how to run and test the system locally using **Docker** and **Spring
+profiles**.
+
+## Local Database Setup (Docker)
+
+For local development, a Docker Compose setup is provided to start a PostgreSQL instance
+that matches the `local` Spring profile configuration.
+
+---
+
+### Local DB Lifecycle
+
+```
+docker compose up
+      ↓
+PostgreSQL container starts (localhost:5432)
+      ↓
+Spring Boot connects using `local` profile
+      ↓
+Flyway runs database migrations
+      ↓
+Application / tests are ready
+```
+
+---
+
+### Start the Local Database
+
+#### Linux / macOS / WSL
+
+```bash
+./scripts/db-up.sh
+```
+
+#### Windows
+
+```bat
+scripts\db-up.bat
+```
+
+---
+
+### Stop the Local Database
+
+#### Linux / macOS / WSL
+
+```bash
+./scripts/db-down.sh
+```
+
+#### Windows
+
+```bat
+scripts\db-down.bat
+```
+
+---
+
+### Using the Database with `order-database`
+
+#### Test profile (`test`)
+
+- Uses PostgreSQL Testcontainers
+- Fully isolated
+- No local database required
+
+```bash
+./scripts/run-db-test.sh
+```
+
+#### Local profile (`local`)
+
+- Uses local PostgreSQL Docker container
+- Useful for debugging and schema inspection
+
+```bash
+./scripts/run-db-local.sh
+```
+
+Flyway migrations are executed automatically on startup.
+
+---
+
+### Docker Runtime Notes (Rancher Desktop on Windows)
+
+If you are using **Rancher Desktop** instead of Docker Desktop on Windows,
+you may encounter Docker context–related issues on first run.
+
+#### Fix
+
+```bash
+rm -rf ~/.docker/contexts/meta
+docker context use default
+```
+
+Then retry:
+
+```bash
+./scripts/db-up.sh
+```
+
+This is a one-time setup step.
+
 
 ---
 
