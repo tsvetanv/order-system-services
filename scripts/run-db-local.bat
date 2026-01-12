@@ -1,2 +1,4 @@
 @echo off
-call run-db.bat local
+setlocal
+echo Launching local database tests...
+call "%~dp0run-db.bat" local

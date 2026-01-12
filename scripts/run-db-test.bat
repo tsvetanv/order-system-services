@@ -1,2 +1,4 @@
 @echo off
-call run-db.bat test
+setlocal
+echo Launching Testcontainers database tests...
+call "%~dp0run-db.bat" test
