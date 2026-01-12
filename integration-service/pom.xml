@@ -52,13 +52,10 @@
 
   <build>
     <plugins>
+      <!-- Standard JAR plugin, no spring-boot-maven-plugin needed for libraries -->
       <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-        <configuration>
-          <!-- This allows other modules to see the classes in this module -->
-          <skip>true</skip>
-        </configuration>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
       </plugin>
     </plugins>
   </build>
