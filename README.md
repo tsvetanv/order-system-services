@@ -473,6 +473,31 @@ This separation keeps concerns clear and supports multiple development workflows
 
 ---
 
+## CI/CD Pipeline (GitHub Actions)
+
+This repository defines the CI pipeline for the Order Processing System
+application runtime.
+
+The pipeline is responsible for:
+
+- Building the application
+- Running unit and integration tests
+- Enforcing architectural guardrails (ArchUnit)
+- Building a Docker image
+- Publishing the image to Amazon ECR
+
+### Why This Matters
+
+Architectural correctness is enforced *before deployment*.
+If a rule is violated, the application is never deployed to AWS.
+
+### Pipeline Overview
+
+GitHub Actions → Maven build → ArchUnit → Docker build → ECR push
+
+
+---
+
 ## Final Notes
 
 This repository serves as both:
