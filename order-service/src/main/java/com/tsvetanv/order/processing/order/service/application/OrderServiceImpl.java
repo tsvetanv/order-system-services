@@ -88,7 +88,6 @@ public class OrderServiceImpl implements OrderService {
       .id(UUID.randomUUID())
       .customerId(dto.getCustomerId())
       .status(OrderStatus.CREATED)
-      .createdAt(Instant.now())
       .build();
 
     // Resolve pricing & build order items
@@ -134,7 +133,6 @@ public class OrderServiceImpl implements OrderService {
 
     // Payment successful → confirm order
     order.setStatus(OrderStatus.CONFIRMED);
-    order.setUpdatedAt(Instant.now());
     orderRepository.save(order);
 
     // Notification after confirmation
@@ -179,7 +177,6 @@ public class OrderServiceImpl implements OrderService {
 
     // Apply state transition
     order.setStatus(OrderStatus.CANCELLED);
-    order.setUpdatedAt(Instant.now());
 
     // Persist state change
     orderRepository.save(order);

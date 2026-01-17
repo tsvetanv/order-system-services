@@ -2,7 +2,6 @@ package com.tsvetanv.order.processing.order.service.api;
 
 import com.tsvetanv.order.processing.order.api.generated.OrdersApi;
 import com.tsvetanv.order.processing.order.api.generated.model.CreateOrderRequest;
-import com.tsvetanv.order.processing.order.api.generated.model.Money;
 import com.tsvetanv.order.processing.order.api.generated.model.Order;
 import com.tsvetanv.order.processing.order.api.generated.model.PagedOrdersResponse;
 import com.tsvetanv.order.processing.order.database.domain.OrderStatus;
@@ -16,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST adapter for Order use cases.
+ */
 @Slf4j
 @RestController
 public class OrderController implements OrdersApi {
@@ -30,26 +32,27 @@ public class OrderController implements OrdersApi {
   private OrderMapper orderMapper;
 
   @Override
-  public ResponseEntity<Void> cancelOrder(UUID orderId) {
-    log.info("HTTP DELETE /orders/{}", orderId);
-    orderService.cancelOrder(orderId);
-    return ResponseEntity.noContent().build();
-  }
-
-  @Override
   public ResponseEntity<Order> createOrder(CreateOrderRequest request) {
     log.info(
       "HTTP POST /orders | customerId={} | items={}",
       request.getCustomer().getCustomerId(),
       request.getItems().size()
     );
-    CreateOrderDto createOrderDto = createOrderMapper.toDto(request);
-    UUID orderId = orderService.createOrder(createOrderDto);
-    log.debug("Fetching created order | orderId={}", orderId);
+
+    // Map API request → application DTO
+    CreateOrderDto dto = createOrderMapper.toDto(request);
+
+    // Delegate business logic
+    UUID orderId = orderService.createOrder(dto);
+
+    // Fetch fully populated aggregate
     var entity = orderService.getOrderById(orderId);
-    Order order = orderMapper.toApi(entity);
+
+    // Map domain → API model (NO hardcoded values)
+    Order response = orderMapper.toApi(entity);
+
     log.info("Order created successfully | orderId={}", orderId);
-    return ResponseEntity.status(201).body(order);
+    return ResponseEntity.status(201).body(response);
   }
 
   @Override
@@ -57,16 +60,22 @@ public class OrderController implements OrdersApi {
     log.info("HTTP GET /orders/{}", orderId);
 
     var entity = orderService.getOrderById(orderId);
-    Order order = orderMapper.toApi(entity);
 
-    //  TODO Temporary total until pricing is implemented
-    order.setTotalAmount(
-      new Money()
-        .amount("0.00")
-        .currency("EUR")
-    );
+    // IMPORTANT:
+    // totalAmount MUST come from domain mapping,
+    // NOT from controller hacks
+    Order response = orderMapper.toApi(entity);
 
-    return ResponseEntity.ok(order);
+    return ResponseEntity.ok(response);
+  }
+
+  @Override
+  public ResponseEntity<Void> cancelOrder(UUID orderId) {
+    log.info("HTTP DELETE /orders/{}", orderId);
+
+    orderService.cancelOrder(orderId);
+
+    return ResponseEntity.noContent().build();
   }
 
   @Override
@@ -86,9 +95,7 @@ public class OrderController implements OrdersApi {
     var page = orderService.listOrders(
       limit,
       offset,
-      status != null
-        ? OrderStatus.valueOf(status.name())
-        : null,
+      status != null ? OrderStatus.valueOf(status.name()) : null,
       customerId,
       sort
     );
@@ -103,5 +110,4 @@ public class OrderController implements OrdersApi {
 
     return ResponseEntity.ok(response);
   }
-
 }

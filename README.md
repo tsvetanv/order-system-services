@@ -253,6 +253,33 @@ order-database
 
 ---
 
+## Health Check
+
+The `order-service` exposes a health endpoint via **Spring Boot Actuator**.
+This endpoint is used by AWS for load balancer health checks and operational monitoring.
+
+### Endpoint
+
+```http
+GET /actuator/health
+```
+
+### Example
+
+```bash
+curl http://<alb-dns-name>/actuator/health
+```
+
+Response:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+---
+
 ## Testing Strategy
 
 ### order-database
@@ -270,6 +297,48 @@ order-database
     - `@WebMvcTest`
     - Raw JSON payloads
     - Mocked dependencies
+
+---
+
+## API Testing with Postman
+
+A ready-to-use Postman collection is provided to test the deployed Order Service
+running on AWS.
+
+### Location
+
+Postman artifacts are stored under the `order-service` module:
+
+```
+order-service/postman/
+├── order-service-aws.postman_collection.json
+└── order-service-aws.postman_environment.json
+```
+
+### Import Steps
+
+1. Open **Postman**
+2. Import both files:
+
+- `order-service-aws.postman_collection.json`
+- `order-service-aws.postman_environment.json`
+
+3. Select environment: **order-service-aws**
+
+### Covered Use Cases
+
+The collection covers the core Order Processing use cases:
+
+- Health check
+- Create order
+- Get order by ID
+- Cancel order
+
+### Important Contract Rules
+
+- All identifiers (`customerId`, `productId`, `orderId`) are **UUIDs**
+- Requests not matching the OpenAPI contract are rejected with **HTTP 400**
+- Validation is intentionally strict to enforce API correctness
 
 ---
 

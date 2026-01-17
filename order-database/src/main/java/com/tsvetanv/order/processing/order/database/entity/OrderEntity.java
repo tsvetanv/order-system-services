@@ -8,6 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -46,9 +48,27 @@ public class OrderEntity {
   @Builder.Default // Required so the builder uses the initialized list
   private List<OrderItemEntity> items = new ArrayList<>();
 
-  @Column(name = "created_at", nullable = false)
+  /**
+   * Creation timestamp. Immutable after first persist.
+   */
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
-  @Column(name = "updated_at")
+  /**
+   * Last modification timestamp. Updated automatically on each entity update.
+   */
+  @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  @PrePersist
+  void onCreate() {
+    Instant now = Instant.now();
+    this.createdAt = now;
+    this.updatedAt = now;
+  }
+
+  @PreUpdate
+  void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 }

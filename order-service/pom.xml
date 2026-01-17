@@ -81,27 +81,27 @@
     </dependency>
 
     <!-- Shared DB test infrastructure -->
-    <dependency>
+    <!-- <dependency>
       <groupId>com.tsvetanv.order.processing</groupId>
       <artifactId>order-database</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency> -->
 
     <!-- Testcontainers PostgreSQL -->
-    <dependency>
+    <!-- <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
       <scope>test</scope>
-    </dependency>
+    </dependency> -->
 
     <!-- Spring Boot Testcontainers integration -->
-    <dependency>
+    <!-- <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-testcontainers</artifactId>
       <scope>test</scope>
-    </dependency>
+    </dependency> -->
 
     <dependency>
       <groupId>com.tngtech.archunit</groupId>
